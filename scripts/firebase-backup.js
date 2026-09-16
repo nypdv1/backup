@@ -11,7 +11,7 @@ function required(name) {
 
 function firebasePath(pathParts) {
   const encoded = pathParts.map((part) => encodeURIComponent(String(part))).join("/");
-  return `${encoded ? `/${encoded}` : ""}.json`;
+  return `/${encoded}.json`;
 }
 
 async function request(databaseUrl, pathParts, shallow = false) {
