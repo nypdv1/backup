@@ -31,9 +31,10 @@ jobs:
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
         run: |
           node scripts/firebase-backup.js
-          FILE=$(find . -maxdepth 1 -type f -name 'realtime-db-backup-*.json' -print -quit)
-          test -n "$FILE"
-          echo "file=$FILE" >> "$GITHUB_OUTPUT"
+          BACKUP_DIR=$(find . -maxdepth 1 -type d -name 'firebase-realtime-backup-*' -print -quit)
+          test -n "$BACKUP_DIR"
+          tar -czf firebase-realtime-backup.tar.gz -C "$(dirname "$BACKUP_DIR")" "$(basename "$BACKUP_DIR")"
+          echo "file=firebase-realtime-backup.tar.gz" >> "$GITHUB_OUTPUT"
 
       - name: Publish persistent backup file
         env:
@@ -41,7 +42,6 @@ jobs:
         run: |
           TAG=firebase-backup-latest
           FILE=${{ steps.backup.outputs.file }}
-          cp "$FILE" firebase-realtime-backup.json
 
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" \
@@ -50,7 +50,7 @@ jobs:
               --prerelease
           fi
 
-          gh release upload "$TAG" firebase-realtime-backup.json --clobber
+          gh release upload "$TAG" "$FILE" --clobber
 
       - name: Output download link
         run: |
