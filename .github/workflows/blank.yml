@@ -25,13 +25,9 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Firebase Admin SDK
-        run: npm install --no-save --no-package-lock firebase-admin@latest
-
       - name: Create streaming backup
         id: backup
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
         run: |
           node scripts/firebase-backup.js
