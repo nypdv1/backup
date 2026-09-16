@@ -3,7 +3,7 @@ const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { pipeline } = require("node:stream/promises");
 const { Readable } = require("node:stream");
-const admin = require("firebase-admin");
+const { cert, initializeApp } = require("firebase-admin/app");
 
 function required(name) {
   const value = process.env[name];
@@ -20,8 +20,8 @@ async function main() {
   }
 
   const databaseUrl = required("FIREBASE_DATABASE_URL").replace(/\/$/, "");
-  const credential = admin.credential.cert(serviceAccount);
-  admin.initializeApp({ credential, databaseURL: databaseUrl });
+  const credential = cert(serviceAccount);
+  initializeApp({ credential, databaseURL: databaseUrl });
 
   // Use the Admin credential only to obtain a short-lived token. The database
   // response itself is streamed, avoiding snapshot.val() and its huge heap use.
