@@ -16,9 +16,24 @@ function firebasePath(pathParts) {
 
 async function request(databaseUrl, pathParts, shallow = false) {
   const suffix = shallow ? "?shallow=true" : "";
-  return fetch(`${databaseUrl}${firebasePath(pathParts)}${suffix}`, {
-    headers: { Accept: "application/json" },
-  });
+  const url = `${databaseUrl}${firebasePath(pathParts)}${suffix}`;
+  let lastError;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      return await fetch(url, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch (error) {
+      lastError = error;
+      if (attempt === 4) break;
+      await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 1000));
+    }
+  }
+
+  const cause = lastError?.cause?.message || lastError?.message || String(lastError);
+  throw new Error(`Network request failed for ${url}: ${cause}`, { cause: lastError });
 }
 
 async function writeChunk(output, chunk) {
