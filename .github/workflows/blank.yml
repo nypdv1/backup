@@ -1,0 +1,65 @@
+name: Firebase Realtime Database Backup
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-realtime-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out backup script
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Firebase Admin SDK
+        run: npm install --no-save --no-package-lock firebase-admin@latest
+
+      - name: Create streaming backup
+        id: backup
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+        run: |
+          node scripts/firebase-backup.js
+          FILE=$(find . -maxdepth 1 -type f -name 'realtime-db-backup-*.json' -print -quit)
+          test -n "$FILE"
+          echo "file=$FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Publish persistent backup file
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=firebase-backup-latest
+          FILE=${{ steps.backup.outputs.file }}
+          cp "$FILE" firebase-realtime-backup.json
+
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "Firebase Realtime Database Backup" \
+              --notes "This release contains the latest automated Firebase backup." \
+              --prerelease
+          fi
+
+          gh release upload "$TAG" firebase-realtime-backup.json --clobber
+
+      - name: Output download link
+        run: |
+          {
+            echo "### Firebase Backup Ready"
+            echo
+            echo "Download the persistent backup from: https://github.com/${{ github.repository }}/releases/tag/firebase-backup-latest"
+          } >> "$GITHUB_STEP_SUMMARY"
