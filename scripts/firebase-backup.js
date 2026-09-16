@@ -3,8 +3,6 @@ const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { pipeline } = require("node:stream/promises");
 const { Readable } = require("node:stream");
-const { cert, initializeApp } = require("firebase-admin/app");
-
 function required(name) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required environment variable: ${name}`);
@@ -12,22 +10,9 @@ function required(name) {
 }
 
 async function main() {
-  let serviceAccount;
-  try {
-    serviceAccount = JSON.parse(required("FIREBASE_SERVICE_ACCOUNT"));
-  } catch (error) {
-    throw new Error(`FIREBASE_SERVICE_ACCOUNT is not valid JSON: ${error.message}`);
-  }
-
   const databaseUrl = required("FIREBASE_DATABASE_URL").replace(/\/$/, "");
-  const credential = cert(serviceAccount);
-  initializeApp({ credential, databaseURL: databaseUrl });
-
-  // Use the Admin credential only to obtain a short-lived token. The database
-  // response itself is streamed, avoiding snapshot.val() and its huge heap use.
-  const { access_token: accessToken } = await credential.getAccessToken();
   const response = await fetch(`${databaseUrl}/.json`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Accept: "application/json" },
   });
 
   if (!response.ok || !response.body) {
